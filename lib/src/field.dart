@@ -30,7 +30,7 @@ typedef DateTimeFieldCreator = DateTimeField Function({
 ///
 /// Shows an [_InputDropdown] that'll trigger [DateTimeField._selectDate] whenever the user
 /// clicks on it ! The date picker is **platform responsive** (ios date picker style for ios, ...)
-class DateTimeField extends StatelessWidget {
+class DateTimeField extends StatefulWidget {
   // Note: This should match the definition of the [DateTimeFieldCreator]
   DateTimeField({
     Key? key,
@@ -44,6 +44,7 @@ class DateTimeField extends StatelessWidget {
     this.dateTextStyle,
     this.initialDate,
     this.use24hFormat = false,
+    this.selectRightAway = false,
     DateTime? firstDate,
     DateTime? lastDate,
     DateFormat? dateFormat,
@@ -62,6 +63,7 @@ class DateTimeField extends StatelessWidget {
     this.dateTextStyle,
     this.use24hFormat = false,
     this.initialEntryMode = DatePickerEntryMode.calendar,
+    this.selectRightAway = false,
     DateTime? firstDate,
     DateTime? lastDate,
   })  : initialDatePickerMode = null,
@@ -110,18 +112,41 @@ class DateTimeField extends StatelessWidget {
   /// The initial entry mode for the material date picker dialog
   final DatePickerEntryMode initialEntryMode;
 
+  /// Whether to show the date picker right away
+  final bool selectRightAway;
+
+  @override
+  State<DateTimeField> createState() => _DateTimeFieldState();
+}
+
+class _DateTimeFieldState extends State<DateTimeField> {
+  bool _shown = false;
+
+  @override
+  void initState() {
+    if (widget.selectRightAway && widget.enabled == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_shown && widget.enabled == true) {
+          _selectDate(context);
+          _shown = true;
+        }
+      });
+    }
+    super.initState();
+  }
+
   /// Shows a dialog asking the user to pick a date !
   Future<void> _selectDate(BuildContext context) async {
     final DateTime initialDateTime;
 
-    if (selectedDate != null) {
-      initialDateTime = selectedDate!;
+    if (widget.selectedDate != null) {
+      initialDateTime = widget.selectedDate!;
     } else {
       final DateTime now = DateTime.now();
-      if (firstDate.isAfter(now) || lastDate.isBefore(now)) {
-        initialDateTime = initialDate ?? lastDate;
+      if (widget.firstDate.isAfter(now) || widget.lastDate.isBefore(now)) {
+        initialDateTime = widget.initialDate ?? widget.lastDate;
       } else {
-        initialDateTime = initialDate ?? now;
+        initialDateTime = widget.initialDate ?? now;
       }
     }
 
@@ -129,7 +154,7 @@ class DateTimeField extends StatelessWidget {
       final DateTime? _selectedDateTime =
           await showCupertinoPicker(context, initialDateTime);
       if (_selectedDateTime != null) {
-        onDateSelected!(_selectedDateTime);
+        widget.onDateSelected!(_selectedDateTime);
       }
     } else {
       DateTime _selectedDateTime = initialDateTime;
@@ -140,7 +165,7 @@ class DateTimeField extends StatelessWidget {
         DateTimeFieldPickerMode.date
       ];
 
-      if (modesWithDate.contains(mode)) {
+      if (modesWithDate.contains(widget.mode)) {
         final DateTime? _selectedDate =
             await showMaterialDatePicker(context, initialDateTime);
 
@@ -157,7 +182,7 @@ class DateTimeField extends StatelessWidget {
         DateTimeFieldPickerMode.time
       ];
 
-      if (modesWithTime.contains(mode)) {
+      if (modesWithTime.contains(widget.mode)) {
         final TimeOfDay? _selectedTime =
             await showMaterialTimePicker(context, initialDateTime);
 
@@ -172,7 +197,7 @@ class DateTimeField extends StatelessWidget {
         }
       }
 
-      onDateSelected!(_selectedDateTime);
+      widget.onDateSelected!(_selectedDateTime);
     }
   }
 
@@ -188,7 +213,7 @@ class DateTimeField extends StatelessWidget {
       builder: (BuildContext context, Widget? child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
-            alwaysUse24HourFormat: use24hFormat,
+            alwaysUse24HourFormat: widget.use24hFormat,
           ),
           child: child!,
         );
@@ -204,11 +229,11 @@ class DateTimeField extends StatelessWidget {
   ) {
     return showDatePicker(
       context: context,
-      initialDatePickerMode: initialDatePickerMode!,
+      initialDatePickerMode: widget.initialDatePickerMode!,
       initialDate: initialDateTime,
-      initialEntryMode: initialEntryMode,
-      firstDate: firstDate,
-      lastDate: lastDate,
+      initialEntryMode: widget.initialEntryMode,
+      firstDate: widget.firstDate,
+      lastDate: widget.lastDate,
     );
   }
 
@@ -225,12 +250,12 @@ class DateTimeField extends StatelessWidget {
         return SizedBox(
           height: kCupertinoDatePickerHeight,
           child: CupertinoDatePicker(
-            mode: cupertinoModeFromPickerMode(mode),
+            mode: cupertinoModeFromPickerMode(widget.mode),
             onDateTimeChanged: (DateTime dt) => pickedDate = dt,
             initialDateTime: initialDateTime,
-            minimumDate: firstDate,
-            maximumDate: lastDate,
-            use24hFormat: use24hFormat,
+            minimumDate: widget.firstDate,
+            maximumDate: widget.lastDate,
+            use24hFormat: widget.use24hFormat,
           ),
         );
       },
@@ -242,19 +267,19 @@ class DateTimeField extends StatelessWidget {
   Widget build(BuildContext context) {
     String? text;
 
-    if (selectedDate != null) {
-      text = dateFormat.format(selectedDate!);
+    if (widget.selectedDate != null) {
+      text = widget.dateFormat.format(widget.selectedDate!);
     }
     TextStyle? textStyle;
 
-    textStyle = dateTextStyle ?? dateTextStyle;
+    textStyle = widget.dateTextStyle ?? widget.dateTextStyle;
 
     return _InputDropdown(
       text: text,
       textStyle: textStyle,
-      isEmpty: selectedDate == null,
-      decoration: decoration,
-      onPressed: enabled! ? () => _selectDate(context) : null,
+      isEmpty: widget.selectedDate == null,
+      decoration: widget.decoration,
+      onPressed: widget.enabled! ? () => _selectDate(context) : null,
     );
   }
 }
